@@ -1,6 +1,6 @@
 {
-  "name": "react-native-image-marker",
-  "version": "1.2.6",
+  "name": "@react-native-oh-tpl/react-native-image-marker",
+  "version": "1.2.6-0.0.1",
   "description": "Add text or icon watermark to your images",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -13,6 +13,7 @@
     "android",
     "ios",
     "cpp",
+    "harmony",
     "app.plugin.js",
     "*.podspec",
     "!lib/typescript/example",
@@ -39,7 +40,9 @@
     "bootstrap-m1": "yarn example && yarn install && yarn example m1-pods",
     "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build",
     "docs": "typedoc --excludePrivate --tsconfig tsconfig.doc.json",
-    "expo-install": "yarn expo-example expo-install"
+    "expo-install": "yarn expo-example expo-install",
+    "bob": "bob build",
+    "prepare": "npm run bob"
   },
   "keywords": [
     "react-native",
@@ -49,15 +52,16 @@
     "marker",
     "text",
     "watermark",
-    "icon"
+    "icon",
+	  "harmony"
   ],
-  "repository": "https://github.com/JimmyDaddy/react-native-image-marker",
+  "repository": "https://github.com/react-native-oh-library/react-native-image-marker",
   "author": "jimmydaddy <heyjimmygo@gmail.com> (https://github.com/JimmyDaddy)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/JimmyDaddy/react-native-image-marker/issues"
+    "url": "https://github.com/react-native-oh-library/react-native-image-marker/issues"
   },
-  "homepage": "https://jimmydaddy.github.io/react-native-image-marker",
+  "homepage": "https://github.com/react-native-oh-library/react-native-image-marker",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
@@ -168,13 +172,23 @@
       [
         "typescript",
         {
-          "project": "tsconfig.build.json"
+          "project": "tsconfig.build.json",
+          "tsc": "./node_modules/.bin/tsc"
         }
       ]
     ]
   },
   "dependencies": {
     "patch-package": "^8.0.0",
-    "postinstall-postinstall": "^2.1.0"
+    "postinstall-postinstall": "^2.1.0",
+    "react-native-image-marker": "^1.2.6"
+  },
+  "harmony": {
+    "codegenConfig": {
+      "specPaths": [
+        "./src"
+      ]
+    },
+    "alias":"react-native-image-marker"
   }
 }
