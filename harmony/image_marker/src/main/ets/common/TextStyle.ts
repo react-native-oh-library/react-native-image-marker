@@ -27,6 +27,7 @@ import { TextAlign } from './TextAlign'
 import { ShadowLayerStyle } from './ShadowLayerStyle'
 import { TextBackgroundStyle } from './TextBackgroundStyle'
 import { DefaultConstants } from './DefaultConstants'
+import { resourceManager } from '@kit.LocalizationKit'
 
 export class TextStyle {
   private color: string | null

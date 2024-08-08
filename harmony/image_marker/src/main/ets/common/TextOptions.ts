@@ -34,6 +34,7 @@ import { handleDynamicToString, convertHexToArgb } from './Utils'
 import { RNNativeImageMarker } from '@rnoh/react-native-openharmony/generated/turboModules/RNNativeImageMarker'
 import { MarkerInsets } from './MarkerInsets';
 import { TextAlign } from './TextAlign';
+import resourceManager from '@ohos.resourceManager';
 
 export class TextOptions {
   private text: string | null;
@@ -155,14 +156,18 @@ export class TextOptions {
     y: string | null,
     style: TextStyle,
     maxWidth: number,
-    maxHeight: number
+    maxHeight: number,
+    typeFace: drawing.Typeface | undefined
   ) {
+
     let font = new drawing.Font();
-    let typeFace = font.getTypeface();
+    if (typeFace) {
+      font.setTypeface(typeFace)
+    }
     const textSize = style.getFontSize();
     font.setSize(textSize);
     let metrics = font.getMetrics();
-    let textHeight = Math.abs(metrics.ascent)
+    let textHeight = Math.abs(metrics.top)
     let length = 1
     let textWidth = 0
     if (this.text.indexOf("\n")) {
@@ -180,9 +185,6 @@ export class TextOptions {
       textWidth >= maxWidth - 2 * DefaultConstants.DEFAULT_MARGIN ? maxWidth - 2 * DefaultConstants.DEFAULT_MARGIN :
         textWidth
     let bgInsets: MarkerInsets
-    /*    let typeFace = new drawing.Typeface
-        typeFace.getFamilyName()
-        font.setTypeface(typeFace)*/
     let bgRect: common2D.Rect = {
       left: 0,
       top: 0,
@@ -200,7 +202,8 @@ export class TextOptions {
     length = this.drawTextWithStyle(style, canvas, length, font, textWidth, textHeight, bgRect, bgInsets);
   }
 
-  private drawTextWithStyle(style: TextStyle, canvas: drawing.Canvas, length: number, font: drawing.Font, textWidth: number,
+  private drawTextWithStyle(style: TextStyle, canvas: drawing.Canvas, length: number, font: drawing.Font,
+    textWidth: number,
     textHeight: number, bgRect: common2D.Rect, bgInsets: MarkerInsets) {
     let fontBrush = new drawing.Brush();
     let fontPen = new drawing.Pen();
@@ -215,15 +218,6 @@ export class TextOptions {
       strokeWidth = 4;
     }
     fontPen.setStrokeWidth(strokeWidth);
-    let italic = false;
-    let skewX = 0;
-    if (style.getItalic() || style.getSkewX()) {
-      italic = true;
-      skewX = -0.3;
-      if (style.getSkewX()) {
-        skewX = style.getSkewX();
-      }
-    }
     if (style.getColor()) {
       let fontColor = convertHexToArgb(style.getColor());
       fontBrush.setColor(fontColor);
@@ -236,10 +230,10 @@ export class TextOptions {
       length = texts.length;
       for (let index = 0; index < texts.length; index++) {
         const text = texts[index].trim();
-        this.drawText(font, text, textWidth, textHeight, canvas, bgRect, bgInsets, index + 1, italic);
+        this.drawText(font, text, textWidth, textHeight, canvas, bgRect, bgInsets, index + 1);
       }
     } else {
-      this.drawText(font, this.text, textWidth, textHeight, canvas, bgRect, bgInsets, 1, italic);
+      this.drawText(font, this.text, textWidth, textHeight, canvas, bgRect, bgInsets, 1);
     }
     canvas.detachPen();
     canvas.detachBrush();
@@ -273,13 +267,15 @@ export class TextOptions {
     return bgRect;
   }
 
-  private drawBackground(bgInsets: MarkerInsets, style: TextStyle, maxWidth: number, maxHeight: number, textWidth: number,
+  private drawBackground(bgInsets: MarkerInsets, style: TextStyle, maxWidth: number, maxHeight: number,
+    textWidth: number,
     bgRect: common2D.Rect, textHeight: number, length: number, margin: number, positionEnum: string | null,
     x: string | null, y: string | null, canvas: drawing.Canvas) {
     bgInsets = style.getTextBackgroundStyle().toEdgeInsets(maxWidth, maxHeight);
     let maxRemainingLength = maxWidth - 2 * DefaultConstants.DEFAULT_MARGIN - bgInsets.getLeft() - bgInsets.getRight();
     textWidth = textWidth >= maxRemainingLength ? maxRemainingLength : textWidth;
-    bgRect = this.calculateBackgroundTypeReact(style, bgRect, bgInsets, maxWidth, textHeight, length, textWidth, maxHeight);
+    bgRect =
+      this.calculateBackgroundTypeReact(style, bgRect, bgInsets, maxWidth, textHeight, length, textWidth, maxHeight);
     let backgroundBrush = new drawing.Brush();
     if (style.getTextBackgroundStyle() && style.getTextBackgroundStyle()?.color) {
       backgroundBrush.setColor(style.getTextBackgroundStyle()?.color);
@@ -314,7 +310,8 @@ export class TextOptions {
     return { bgInsets, textWidth, bgRect };
   }
 
-  private calculateBackgroundTypeReact(style: TextStyle, bgRect: common2D.Rect, bgInsets: MarkerInsets, maxWidth: number,
+  private calculateBackgroundTypeReact(style: TextStyle, bgRect: common2D.Rect, bgInsets: MarkerInsets,
+    maxWidth: number,
     textHeight: number, length: number, textWidth: number, maxHeight: number) {
     switch (style.getTextBackgroundStyle()?.type) {
       case 'stretchX':
@@ -360,13 +357,17 @@ export class TextOptions {
             textHeight * length;
         }
         bgRect = {
-          left: left, top: top,right: right,bottom: bottom };
+          left: left,
+          top: top,
+          right: right,
+          bottom: bottom
+        };
     }
     return bgRect;
   }
 
   private drawText(font: drawing.Font, text: string, textWidth: number, textHeight: number, canvas: drawing.Canvas,
-    bgRect: common2D.Rect, bgInsets: MarkerInsets, index: number, italic: boolean) {
+    bgRect: common2D.Rect, bgInsets: MarkerInsets, index: number) {
     let textWidths = font.measureText(text, drawing.TextEncoding.TEXT_ENCODING_UTF8);
     let lineLength = text.length;
     let lineCount = 1;
@@ -395,9 +396,17 @@ export class TextOptions {
       }
     }
     let start = 0;
-    let y = bgRect.top + DefaultConstants.DEFAULT_MARGIN + textHeight * index;
+    let y = bgRect.top + DefaultConstants.DEFAULT_MARGIN * index + textHeight * index;
     if (bgInsets) {
       y = y + bgInsets.getTop()
+    }
+    let skewX = 0;
+    if (this.style.getItalic() || this.style.getSkewX()) {
+      skewX = DefaultConstants.DEFAULT_ITALIC;
+      if (this.style.getSkewX()) {
+        skewX = -this.style.getSkewX();
+      }
+      font.setSkewX(skewX)
     }
     for (let index = 0; index < lineCount; index++) {
       const writeText = text.substring(start, start + lineLength);
@@ -424,9 +433,9 @@ export class TextOptions {
 
   private drawStrikeThrough(x: number, y: number, textWidths: number, textHeight: number, canvas: drawing.Canvas) {
     let x0 = x
-    let y0 = y - textHeight /4
+    let y0 = y - textHeight / 4
     let x1 = x0 + textWidths
-    let y1 = y - textHeight/4
+    let y1 = y - textHeight / 4
     canvas.drawLine(x0, y0, x1, y1)
   }
 

@@ -30,6 +30,7 @@ export class DefaultConstants {
   static DEFAULT_ROTATE: number = 0;
   static DEFAULT_ALPHA: number = 1;
   static DEFAULT_MARGIN: number = 20;
+  static DEFAULT_ITALIC: number = -0.5;
   static IMAGE_MARKER_TAG: string = "[ImageMarker]";
   static BASE64: string = "base64";
 }
