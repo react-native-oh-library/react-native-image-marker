@@ -24,7 +24,8 @@
 
 import { image } from '@kit.ImageKit';
 import { ImageOptions } from './ImageOptions';
-
+import { drawing } from '@kit.ArkGraphics2D';
+import ResourceManager from '@ohos.resourceManager'
 const TAG = 'ImageMarker';
 
 export interface position {
@@ -103,7 +104,7 @@ export interface ImageSrc {
   __packager_asset: boolean
 }
 
-export async function getPixelMap(resource, imageOptions: ImageOptions,isBackground:boolean) {
+export async function getPixelMap(resource, imageOptions: ImageOptions, isBackground: boolean) {
   let arrayBuffer = resource.buffer.slice(resource.byteOffset, resource.byteLength + resource.byteOffset)
   let sourceOptions: image.SourceOptions =
     {
@@ -124,6 +125,26 @@ export async function getPixelMap(resource, imageOptions: ImageOptions,isBackgro
   let pixelMap = await imageSource.createPixelMap(opts);
   pixelMap.opacitySync(imageOptions.alpha);
   return pixelMap;
+}
+
+export function findFontResource(resourceManager, fontName: string,path:string): string {
+  let targetFile = fontName+".ttf"
+  let files:string[] =  resourceManager.getRawFileListSync(path)
+  for (let index = 0; index < files.length; index++) {
+    const file = files[index];
+    const tempUrl = path+"/"+file;
+    if(file.endsWith(targetFile)){
+      return tempUrl
+    }else{
+      if(file.indexOf(".")>0){
+        continue
+
+      }else{
+        findFontResource(resourceManager, fontName,tempUrl);
+      }
+    }
+  }
+  return undefined
 }
 
 export async function getResource(url: string, resourceManager) {
