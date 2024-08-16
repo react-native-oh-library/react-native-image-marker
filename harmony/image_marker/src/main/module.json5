@@ -13,17 +13,5 @@
         "value": "true"
       }
     ],
-   /* "requestPermissions": [
-      {
-        "name": "ohos.permission.WRITE_IMAGEVIDEO",
-        "reason": "$string:reason",
-        "usedScene": {
-          "abilities": [
-            "FormAbility"
-          ],
-          "when": "inuse"
-        }
-      }
-    ]*/
   }
 }

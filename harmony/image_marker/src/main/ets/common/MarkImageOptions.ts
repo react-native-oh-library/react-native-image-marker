@@ -29,7 +29,7 @@ import { ErrorCode } from './ErrorCode';
 import { ImageOptions } from './ImageOptions';
 import { Position } from './Position';
 import { DefaultConstants } from './DefaultConstants';
-import { handleDynamicToString, getResource, getPixelMap,parseSpreadValue } from './Utils'
+import { handleDynamicToString, isCoilImg, getPixelMap,parseSpreadValue } from './Utils'
 import WatermarkImageOptions from './WatermarkImageOptions';
 import { drawing } from '@kit.ArkGraphics2D';
 
@@ -72,15 +72,13 @@ export class MarkImageOptions extends Options {
 
   async applyStyle(canvas: drawing.Canvas, resoureManger, maxWidth: number,
     maxHeight: number) {
-
     if (this.watermarkImages.length > 0) {
       for (let index = 0; index < this.watermarkImages.length; index++) {
         canvas.save()
         const markImage = this.watermarkImages[index];
         let imageWidth = markImage.imageOption.src.width * markImage.imageOption.src.scale
         let imageHeight = markImage.imageOption.src.height * markImage.imageOption.src.scale
-        let markerImageResource = await getResource(markImage.imageOption.src.uri, resoureManger);
-        let markerPixelMap = await getPixelMap(markerImageResource, markImage.imageOption, false)
+        let markerPixelMap = await getPixelMap(resoureManger, markImage.imageOption, false)
         let position
         if (markImage.positionEnum != null) {
           position =
@@ -97,7 +95,6 @@ export class MarkImageOptions extends Options {
               maxWidth, maxHeight, imageWidth,
               imageHeight)
         }
-
         if (markImage.imageOption.rotate != 0) {
           let x = (position.x + (position.x + imageWidth)) / 2
           let y = (position.y + (position.y + imageHeight)) / 2
