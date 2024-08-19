@@ -24,9 +24,11 @@
 
 import { image } from '@kit.ImageKit';
 import { ImageOptions } from './ImageOptions';
-import { drawing } from '@kit.ArkGraphics2D';
-import ResourceManager from '@ohos.resourceManager'
-const TAG = 'ImageMarker';
+import { fileIo } from '@kit.CoreFileKit';
+import { util } from '@kit.ArkTS';
+import { http } from '@kit.NetworkKit'
+import { MarkerError } from './MarkerError';
+import { ErrorCode } from './ErrorCode';
 
 export interface position {
   x: number,
@@ -104,43 +106,89 @@ export interface ImageSrc {
   __packager_asset: boolean
 }
 
-export async function getPixelMap(resource, imageOptions: ImageOptions, isBackground: boolean) {
-  let arrayBuffer = resource.buffer.slice(resource.byteOffset, resource.byteLength + resource.byteOffset)
+export function isCoilImg(uri: string | null): boolean {
+  if (!uri) {
+    return false;
+  }
+  return uri.startsWith("http://") ||
+  uri.startsWith("https://") ||
+  uri.startsWith("file://") ||
+    (uri.startsWith("data:") && uri.includes("base64") &&
+      (uri.includes("img") || uri.includes("image")));
+}
+
+export async function downloadImage(src: string): Promise<object> {
+  // write the image to system
+  let dir = globalThis.context.cacheDir
+  let filePath =
+    dir + "/" + util.generateRandomUUID(true).toString() + src.substring(src.lastIndexOf("/") + 1, src.length)
+  let resp = await http.createHttp().request(src, { readTimeout: 0,connectTimeout:0, usingCache: true })
+  if (resp.responseCode === http.ResponseCode.OK) {
+    let imageSource = await image.createImageSource(resp.result as ArrayBuffer);
+    let file = await fileIo.open(filePath, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE)
+    // 写入文件
+    Object
+    await fileIo.write(file.fd, resp.result as ArrayBuffer);
+    // 关闭文件
+    await fileIo.close(file.fd);
+    let imageInfo = await imageSource.getImageInfo(0);
+
+    return {
+      'uri': filePath,
+      'height': imageInfo.size.height,
+      'width': imageInfo.size.width,
+      'scale': 1
+    }
+  } else {
+    throw new MarkerError(ErrorCode.LOAD_IMAGE_FAILED, "image url is INVALID")
+  }
+}
+
+export async function getPixelMap(resourceManager, imageOptions: ImageOptions, isBackground: boolean) {
+  let imageSource:image.ImageSource
   let sourceOptions: image.SourceOptions =
     {
       sourceDensity: 120,
       sourceSize: {
-        height: imageOptions.src.height * imageOptions.scale,
-        width: imageOptions.src.width * imageOptions.scale
+        height: imageOptions.src.height,
+        width: imageOptions.src.width
       }
     };
-  const imageSource = image.createImageSource(arrayBuffer, sourceOptions)
-  let opts: image.DecodingOptions = {
+  if (imageOptions.uri?.startsWith("assets")) {
+    let resource = await getResource(imageOptions.src.uri, resourceManager);
+    let arrayBuffer = resource.buffer.slice(resource.byteOffset, resource.byteLength + resource.byteOffset)
+    imageSource =await image.createImageSource(arrayBuffer, sourceOptions)
+  } else {
+    imageSource =await image.createImageSource(imageOptions.src.uri)
+  }
+
+  let opts: image.InitializationOptions = {
     editable: true,
-    desiredSize: {
-      height: imageOptions.src.height * imageOptions.scale,
-      width: imageOptions.src.width * imageOptions.scale
+    size: {
+      height: imageOptions.src.height ,
+      width: imageOptions.src.width
     }
   }
   let pixelMap = await imageSource.createPixelMap(opts);
   pixelMap.opacitySync(imageOptions.alpha);
+  pixelMap.scaleSync(imageOptions.scale,imageOptions.scale)
   return pixelMap;
 }
 
-export function findFontResource(resourceManager, fontName: string,path:string): string {
-  let targetFile = fontName+".ttf"
-  let files:string[] =  resourceManager.getRawFileListSync(path)
+export function findFontResource(resourceManager, fontName: string, path: string): string {
+  let targetFile = fontName + ".ttf"
+  let files: string[] = resourceManager.getRawFileListSync(path)
   for (let index = 0; index < files.length; index++) {
     const file = files[index];
-    const tempUrl = path+"/"+file;
-    if(file.endsWith(targetFile)){
+    const tempUrl = path + "/" + file;
+    if (file.endsWith(targetFile)) {
       return tempUrl
-    }else{
-      if(file.indexOf(".")>0){
+    } else {
+      if (file.indexOf(".") > 0) {
         continue
 
-      }else{
-        findFontResource(resourceManager, fontName,tempUrl);
+      } else {
+        findFontResource(resourceManager, fontName, tempUrl);
       }
     }
   }
