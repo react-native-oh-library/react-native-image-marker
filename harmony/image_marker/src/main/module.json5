@@ -7,23 +7,16 @@
       "tablet",
       "2in1"
     ],
+    "requestPermissions": [
+      {
+        "name": "ohos.permission.INTERNET"
+      }
+    ],
     "metadata": [
       {
         "name": "ContextResourceConfigLoadFromParentTemp",
         "value": "true"
       }
     ],
-   /* "requestPermissions": [
-      {
-        "name": "ohos.permission.WRITE_IMAGEVIDEO",
-        "reason": "$string:reason",
-        "usedScene": {
-          "abilities": [
-            "FormAbility"
-          ],
-          "when": "inuse"
-        }
-      }
-    ]*/
   }
 }

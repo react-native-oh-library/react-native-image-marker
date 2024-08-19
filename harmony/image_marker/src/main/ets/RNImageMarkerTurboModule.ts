@@ -36,9 +36,10 @@ import font from '@ohos.font';
 import { DefaultConstants } from "./common/DefaultConstants"
 import { MarkImageOptions } from './common/MarkImageOptions'
 import { TextOptions } from './common/TextOptions'
-import { getPixelMap, getResource, SaveFormat } from './common/Utils'
+import { getPixelMap, downloadImage, SaveFormat, isCoilImg } from './common/Utils'
 import { ImageOptions } from './common/ImageOptions';
 import { util } from '@kit.ArkTS';
+import { RNImageSRC } from './common/RNImageSRC';
 
 const TAG = 'ImageMarker';
 let fd: number | null = null
@@ -57,6 +58,7 @@ export class RNImageMarkerTurboModule extends TurboModule implements TM.RNNative
   constructor(ctx: TurboModuleContext) {
     super(ctx)
     this.context = this.ctx.uiAbilityContext;
+    globalThis.context = this.context
     this.resourceManager = this.context.resourceManager;
     this.logger = this.ctx.logger.clone(TAG)
     // register fonts
@@ -73,8 +75,8 @@ export class RNImageMarkerTurboModule extends TurboModule implements TM.RNNative
         const familyName = element.substring(0, element.indexOf("."))
         // write font files to system
         this.resourceManager.getRawFileContent(fontUrl + "/" + element, (err, value) => {
-          if(err){
-            this.logger.error(TAG,err.message,err.stack)
+          if (err) {
+            this.logger.error(TAG, err.message, err.stack)
             return
           }
           let systemFileUrl = fileDir + "/" + element
@@ -93,11 +95,16 @@ export class RNImageMarkerTurboModule extends TurboModule implements TM.RNNative
   async markWithText(options: RNNativeImageMarker.TextMarkOptions): Promise<string> {
     this.logger.info(TAG, "markWithText params: ", JSON.stringify(options))
     try {
+      let srcObj = JSON.parse(JSON.stringify(options.backgroundImage.src)) as RNImageSRC;
+      let uri = srcObj.uri
+      if (isCoilImg(uri)) {
+        let backSrc = await downloadImage(uri)
+        options.backgroundImage.src = JSON.stringify(backSrc)
+      }
       let backgroundImage = new ImageOptions(options.backgroundImage)
       this.imageWidth = backgroundImage.src.width * backgroundImage.scale
       this.imageHeight = backgroundImage.src.height * backgroundImage.scale
-      let backgroundImageResource = await getResource(backgroundImage.src.uri, this.resourceManager);
-      let backgroundPixelMap = await getPixelMap(backgroundImageResource, backgroundImage, true)
+      let backgroundPixelMap: image.PixelMap = await getPixelMap(this.resourceManager, backgroundImage, true)
       let canvas = new drawing.Canvas(backgroundPixelMap);
       let watermarkTexts = options.watermarkTexts;
       for (let index = 0; index < watermarkTexts.length; index++) {
@@ -143,16 +150,29 @@ export class RNImageMarkerTurboModule extends TurboModule implements TM.RNNative
   async markWithImage(options: RNNativeImageMarker.ImageMarkOptions): Promise<string> {
     this.logger.info(TAG, "markWithImage params: ", JSON.stringify(options))
     try {
+      let srcObj = JSON.parse(JSON.stringify(options.backgroundImage.src)) as RNImageSRC;
+      let backUri = srcObj.uri
+      if (isCoilImg(backUri)) {
+        let backSrc = await downloadImage(backUri)
+        options.backgroundImage.src = JSON.stringify(backSrc)
+      }
+      for (let index = 0; index < options.watermarkImages.length; index++) {
+        const markImage = options.watermarkImages[index];
+        let srcObj = JSON.parse(JSON.stringify(markImage.src)) as RNImageSRC;
+        let imageUri = srcObj.uri
+        if (isCoilImg(imageUri)) {
+          let backSrc = await downloadImage(imageUri)
+          options.watermarkImages[index].src = JSON.stringify(backSrc)
+        }
+      }
       let watermarkImageOptions = new MarkImageOptions(options);
       this.imageWidth =
         watermarkImageOptions.backgroundImage.src.width * watermarkImageOptions.backgroundImage.scale
       this.imageHeight =
         watermarkImageOptions.backgroundImage.src.height * watermarkImageOptions.backgroundImage.scale
-      let backgroundImageResource =
-        await getResource(watermarkImageOptions.backgroundImage.src.uri, this.resourceManager);
-      let backgroundPixelMap =
-        await getPixelMap(backgroundImageResource, watermarkImageOptions.backgroundImage, true)
-      const canvas = new drawing.Canvas(backgroundPixelMap);
+      let backgroundPixelMap: image.PixelMap =
+        await getPixelMap(this.resourceManager, watermarkImageOptions.backgroundImage, true)
+      const canvas = new drawing.Canvas(backgroundPixelMap)
       canvas.save()
       await watermarkImageOptions.applyStyle(canvas, this.resourceManager, this.imageWidth,
         this.imageHeight,)
@@ -179,29 +199,22 @@ export class RNImageMarkerTurboModule extends TurboModule implements TM.RNNative
     quality: number) {
     const imagePacker = image.createImagePacker();
     let opts = {
-      format: 'image/jpeg',
+      format: 'image/png',
       quality: !!quality ? quality : 100
-    }
-    if (format == 'png') {
-      opts = {
-        format: 'image/png',
-        quality: !!quality ? quality : 100
-      }
     }
     if (format === RNNativeImageMarker.ImageFormat.base64) {
       let buffer = await imagePacker.packing(backgroundPixelMap, opts)
       let bufferArr = new Uint8Array(buffer)
       let help = new util.Base64Helper
       var base = await help.encodeToString(bufferArr)
-      return 'data:image/jpeg;base64,' + base
+      return 'data:image/png;base64,' + base
     } else {
-      const imageBuffer = await imagePacker.packing(backgroundPixelMap, opts);
       let uri =
         this.generateCacheFilePathForMarker(filename, format);
       const mode = fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE;
       fd = (await fs.open(uri, mode)).fd;
-      await fs.truncate(fd);
-      await fs.write(fd, imageBuffer);
+      await imagePacker.packToFile(backgroundPixelMap, fd, opts)
+      imagePacker.release();
       // change to real path
       let real = fileUri.getUriFromPath(uri)
       return real;

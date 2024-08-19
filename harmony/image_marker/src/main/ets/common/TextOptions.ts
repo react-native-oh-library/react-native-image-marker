@@ -217,6 +217,10 @@ export class TextOptions {
     if (style.getBold()) {
       strokeWidth = 4;
     }
+    canvas.save()
+    if (style.getRotate() != 0) {
+      canvas.rotate(style.getRotate(), (bgRect.left + bgRect.right) / 2, (bgRect.top + bgRect.bottom) / 2);
+    }
     fontPen.setStrokeWidth(strokeWidth);
     if (style.getColor()) {
       let fontColor = convertHexToArgb(style.getColor());
@@ -237,10 +241,12 @@ export class TextOptions {
     }
     canvas.detachPen();
     canvas.detachBrush();
+    canvas.restore()
     return length;
   }
 
-  private defaultBackgroundReact(textWidth: number, textHeight: number, length: number, bgRect: common2D.Rect) {
+  private defaultBackgroundReact(textWidth: number, textHeight: number, length: number,
+    bgRect: common2D.Rect) {
     let left = this.position?.x - DefaultConstants.DEFAULT_MARGIN <
     DefaultConstants.DEFAULT_MARGIN ? DefaultConstants.DEFAULT_MARGIN :
       this.position?.x - DefaultConstants.DEFAULT_MARGIN;
@@ -253,10 +259,10 @@ export class TextOptions {
       left =
         this.maxWidth - DefaultConstants.DEFAULT_MARGIN * 2 - textWidth;
     }
-    let bottom = top + textHeight * length + +DefaultConstants.DEFAULT_MARGIN * 2;
+    let bottom = top + textHeight * length + DefaultConstants.DEFAULT_MARGIN * 2;
     if (bottom >= this.maxHeight) {
       bottom = this.maxHeight - DefaultConstants.DEFAULT_MARGIN;
-      top = this.maxHeight - DefaultConstants.DEFAULT_MARGIN * 2;
+      top = bottom - textHeight * length - DefaultConstants.DEFAULT_MARGIN * 2;
     }
     bgRect = {
       left: left,
@@ -296,6 +302,7 @@ export class TextOptions {
     if (style.getRotate() != 0) {
       canvas.rotate(style.getRotate(), (bgRect.left + bgRect.right) / 2, (bgRect.top + bgRect.bottom) / 2);
     }
+    canvas.save()
     if (style.getTextBackgroundStyle().cornerRadius) {
       let paths: PathPotions[] = style.getTextBackgroundStyle().cornerRadius?.radii(bgRect);
       let path = this.getDrawPath(bgRect, paths);
@@ -307,6 +314,7 @@ export class TextOptions {
       canvas.drawRect(bgRect);
       canvas.detachBrush();
     }
+    canvas.restore()
     return { bgInsets, textWidth, bgRect };
   }
 
@@ -376,6 +384,7 @@ export class TextOptions {
       lineLength = divideAndRound(text.length * textWidth, textWidths, 3);
       lineCount = Math.ceil(text.length / lineLength);
     }
+
     let textAlign = this.style.getTextAlign();
     let x = 0;
     if (textAlign == TextAlign.CENTER) {
