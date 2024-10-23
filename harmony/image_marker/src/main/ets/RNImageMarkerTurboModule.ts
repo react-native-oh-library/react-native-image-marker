@@ -66,30 +66,40 @@ export class RNImageMarkerTurboModule extends TurboModule implements TM.RNNative
   }
 
   registerFonts() {
+    console.log("===========registerFonts ")
     let fontUrl = "assets/assets/fonts"
-    let fontsUrl = this.resourceManager.getRawFileListSync(fontUrl);
-    let fileDir = this.context.filesDir
-    for (let index = 0; index < fontsUrl.length; index++) {
-      const element = fontsUrl[index];
-      if (element.indexOf(".") > 0) {
-        const familyName = element.substring(0, element.indexOf("."))
-        // write font files to system
-        this.resourceManager.getRawFileContent(fontUrl + "/" + element, (err, value) => {
-          if (err) {
-            this.logger.error(TAG, err.message, err.stack)
-            return
+    try {
+      let fontsUrl = this.resourceManager.getRawFileListSync(fontUrl);
+      console.log("===========getRawFileListSync ")
+      if(fontsUrl){
+        console.log("===========fontsUrl ",fontsUrl)
+        let fileDir = this.context.filesDir
+        for (let index = 0; index < fontsUrl.length; index++) {
+          const element = fontsUrl[index];
+          if (element.indexOf(".") > 0) {
+            const familyName = element.substring(0, element.indexOf("."))
+            // write font files to system
+            this.resourceManager.getRawFileContent(fontUrl + "/" + element, (err, value) => {
+              if (err) {
+                this.logger.error(TAG, err.message, err.stack)
+                return
+              }
+              let systemFileUrl = fileDir + "/" + element
+              let file = fs.openSync(systemFileUrl, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
+              fs.writeSync(file.fd, value.buffer);
+              fs.closeSync(file);
+              font.registerFont(
+                { familyName: familyName, familySrc: systemFileUrl }
+              )
+              this.fonts.push({ familyName: familyName, familySrc: systemFileUrl })
+            })
           }
-          let systemFileUrl = fileDir + "/" + element
-          let file = fs.openSync(systemFileUrl, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
-          fs.writeSync(file.fd, value.buffer);
-          fs.closeSync(file);
-          font.registerFont(
-            { familyName: familyName, familySrc: systemFileUrl }
-          )
-          this.fonts.push({ familyName: familyName, familySrc: systemFileUrl })
-        })
+        }
       }
+    }catch (e){
+      console.log("===========getRawFileListSync err ",e.message)
     }
+
   }
 
   async markWithText(options: RNNativeImageMarker.TextMarkOptions): Promise<string> {
