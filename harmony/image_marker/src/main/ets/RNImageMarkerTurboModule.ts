@@ -61,7 +61,6 @@ export class RNImageMarkerTurboModule extends TurboModule implements TM.RNNative
     globalThis.context = this.context
     this.resourceManager = this.context.resourceManager;
     this.logger = this.ctx.logger.clone(TAG)
-    // register fonts
     this.registerFonts()
   }
 
