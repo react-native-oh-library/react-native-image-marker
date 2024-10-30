@@ -66,13 +66,10 @@ export class RNImageMarkerTurboModule extends TurboModule implements TM.RNNative
   }
 
   registerFonts() {
-    console.log("===========registerFonts ")
     let fontUrl = "assets/assets/fonts"
     try {
       let fontsUrl = this.resourceManager.getRawFileListSync(fontUrl);
-      console.log("===========getRawFileListSync ")
       if(fontsUrl){
-        console.log("===========fontsUrl ",fontsUrl)
         let fileDir = this.context.filesDir
         for (let index = 0; index < fontsUrl.length; index++) {
           const element = fontsUrl[index];
@@ -121,6 +118,7 @@ export class RNImageMarkerTurboModule extends TurboModule implements TM.RNNative
         canvas.save()
         let watermarkText = watermarkTexts[index]
         let textOptions = new TextOptions(watermarkText, this.imageWidth, this.imageHeight)
+        textOptions.getPosition()
         let positionEnum = watermarkText.positionOptions?.position
         if (!positionEnum) {
           positionEnum = watermarkText.position?.position

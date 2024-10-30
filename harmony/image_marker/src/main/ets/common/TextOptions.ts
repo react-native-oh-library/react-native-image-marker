@@ -199,12 +199,12 @@ export class TextOptions {
     } else {
       bgRect = this.defaultBackgroundReact(textWidth, textHeight, length, bgRect);
     }
-    length = this.drawTextWithStyle(style, canvas, length, font, textWidth, textHeight, bgRect, bgInsets);
+    length = this.drawTextWithStyle(style, canvas, length, font, textWidth, textHeight, bgRect);
   }
 
   private drawTextWithStyle(style: TextStyle, canvas: drawing.Canvas, length: number, font: drawing.Font,
     textWidth: number,
-    textHeight: number, bgRect: common2D.Rect, bgInsets: MarkerInsets) {
+    textHeight: number, bgRect: common2D.Rect) {
     let fontBrush = new drawing.Brush();
     let fontPen = new drawing.Pen();
     if (style.getShadowLayerStyle()) {
@@ -234,10 +234,10 @@ export class TextOptions {
       length = texts.length;
       for (let index = 0; index < texts.length; index++) {
         const text = texts[index].trim();
-        this.drawText(font, text, textWidth, textHeight, canvas, bgRect, bgInsets, index + 1);
+        this.drawText(font, text, textWidth, textHeight, canvas, index + 1);
       }
     } else {
-      this.drawText(font, this.text, textWidth, textHeight, canvas, bgRect, bgInsets, 1);
+      this.drawText(font, this.text, textWidth, textHeight, canvas, 1);
     }
     canvas.detachPen();
     canvas.detachBrush();
@@ -247,23 +247,12 @@ export class TextOptions {
 
   private defaultBackgroundReact(textWidth: number, textHeight: number, length: number,
     bgRect: common2D.Rect) {
-    let left = this.position?.x - DefaultConstants.DEFAULT_MARGIN <
-    DefaultConstants.DEFAULT_MARGIN ? DefaultConstants.DEFAULT_MARGIN :
-      this.position?.x - DefaultConstants.DEFAULT_MARGIN;
-    let top = this.position?.y - DefaultConstants.DEFAULT_MARGIN <
-    DefaultConstants.DEFAULT_MARGIN ? DefaultConstants.DEFAULT_MARGIN :
-      this.position?.y - DefaultConstants.DEFAULT_MARGIN;
-    let right = left + textWidth + DefaultConstants.DEFAULT_MARGIN * 2;
-    if (right >= this.maxWidth) {
-      right = this.maxWidth - DefaultConstants.DEFAULT_MARGIN;
-      left =
-        this.maxWidth - DefaultConstants.DEFAULT_MARGIN * 2 - textWidth;
-    }
-    let bottom = top + textHeight * length + DefaultConstants.DEFAULT_MARGIN * 2;
-    if (bottom >= this.maxHeight) {
-      bottom = this.maxHeight - DefaultConstants.DEFAULT_MARGIN;
-      top = bottom - textHeight * length - DefaultConstants.DEFAULT_MARGIN * 2;
-    }
+    let left = this.position?.x
+    let top = this.position?.y
+    let right = this.position?.x + textWidth + 2 * DefaultConstants.DEFAULT_MARGIN
+    let dived = length > 1 ? (length - 1) * DefaultConstants.DEFAULT_MARGIN : 0
+    let bottom = this.position?.y + textHeight * length + 2 * DefaultConstants.DEFAULT_MARGIN + dived
+
     bgRect = {
       left: left,
       top: top,
@@ -299,10 +288,11 @@ export class TextOptions {
         position.y = parseSpreadValue(y, maxHeight);
       }
     }
+    canvas.save()
     if (style.getRotate() != 0) {
       canvas.rotate(style.getRotate(), (bgRect.left + bgRect.right) / 2, (bgRect.top + bgRect.bottom) / 2);
     }
-    canvas.save()
+
     if (style.getTextBackgroundStyle().cornerRadius) {
       let paths: PathPotions[] = style.getTextBackgroundStyle().cornerRadius?.radii(bgRect);
       let path = this.getDrawPath(bgRect, paths);
@@ -321,61 +311,35 @@ export class TextOptions {
   private calculateBackgroundTypeReact(style: TextStyle, bgRect: common2D.Rect, bgInsets: MarkerInsets,
     maxWidth: number,
     textHeight: number, length: number, textWidth: number, maxHeight: number) {
+    bgRect = {
+      left: this.position?.x - bgInsets.getLeft(),
+      top: this.position?.y - bgInsets.getTop(),
+      right: this.position?.x + textWidth + bgInsets.getRight() + DefaultConstants.DEFAULT_MARGIN,
+      bottom: this.position?.y + textHeight * length + bgInsets.getBottom() + 2 * DefaultConstants.DEFAULT_MARGIN
+    };
     switch (style.getTextBackgroundStyle()?.type) {
       case 'stretchX':
-        bgRect.left = 0;
-        bgRect.top = this.position?.y - bgInsets.getTop() < DefaultConstants.DEFAULT_MARGIN ?
-        DefaultConstants.DEFAULT_MARGIN : this.position?.y - bgInsets.getTop();
-        bgRect.right = maxWidth,
-        bgRect.bottom =
-          bgRect.top + textHeight * length + bgInsets.getBottom() + DefaultConstants.DEFAULT_MARGIN * 2 >
-          this.maxHeight ?
-            this.maxHeight - DefaultConstants.DEFAULT_MARGIN :
-            bgRect.top + textHeight * length + bgInsets.getBottom() + DefaultConstants.DEFAULT_MARGIN * 2;
+        bgRect = {
+          left: 0,
+          top: this.position?.y - bgInsets.getTop() + DefaultConstants.DEFAULT_MARGIN,
+          right: maxWidth,
+          bottom: this.position?.y + textHeight * length + bgInsets.getBottom() + DefaultConstants.DEFAULT_MARGIN
+        }
         break;
       case 'stretchY':
-        bgRect.left =
-          this.position?.x - bgInsets.getLeft() - DefaultConstants.DEFAULT_MARGIN < DefaultConstants.DEFAULT_MARGIN ?
-          DefaultConstants.DEFAULT_MARGIN : this.position?.x - bgInsets.getLeft() - DefaultConstants.DEFAULT_MARGIN;
-        bgRect.top = 0;
-        bgRect.right =
-          bgRect.left + textWidth + bgInsets.getRight() + DefaultConstants.DEFAULT_MARGIN * 2 > maxWidth ?
-            maxWidth - DefaultConstants.DEFAULT_MARGIN :
-            bgRect.left + textWidth + bgInsets.getRight() + DefaultConstants.DEFAULT_MARGIN * 2;
-        bgRect.bottom = maxHeight;
-        break;
-      default:
-        let left = this.position?.x - bgInsets.getLeft() - DefaultConstants.DEFAULT_MARGIN <
-        DefaultConstants.DEFAULT_MARGIN ? DefaultConstants.DEFAULT_MARGIN :
-          this.position?.x - bgInsets.getLeft() - DefaultConstants.DEFAULT_MARGIN;
-        let top = this.position?.y - bgInsets.getTop() - DefaultConstants.DEFAULT_MARGIN <
-        DefaultConstants.DEFAULT_MARGIN ? DefaultConstants.DEFAULT_MARGIN :
-          this.position?.y - bgInsets.getTop() - DefaultConstants.DEFAULT_MARGIN;
-        let right = left + bgInsets.getLeft() + textWidth + bgInsets.getRight() + DefaultConstants.DEFAULT_MARGIN * 2;
-        if (right >= this.maxWidth) {
-          right = this.maxWidth - DefaultConstants.DEFAULT_MARGIN;
-          left =
-            this.maxWidth - DefaultConstants.DEFAULT_MARGIN * 2 - bgInsets.getRight() - bgInsets.getLeft() - textWidth;
-        }
-        let bottom =
-          top + bgInsets.getTop() + textHeight * length + bgInsets.getBottom() + DefaultConstants.DEFAULT_MARGIN * 2;
-        if (bottom >= this.maxHeight) {
-          bottom = this.maxHeight - DefaultConstants.DEFAULT_MARGIN;
-          top = this.maxHeight - DefaultConstants.DEFAULT_MARGIN * 2 - bgInsets.getTop() - bgInsets.getBottom() -
-            textHeight * length;
-        }
         bgRect = {
-          left: left,
-          top: top,
-          right: right,
-          bottom: bottom
-        };
+          left: this.position?.x - bgInsets.getLeft(),
+          top: 0,
+          right: this.position?.x + textWidth + bgInsets.getRight(),
+          bottom: maxHeight
+        }
+        break;
     }
     return bgRect;
   }
 
   private drawText(font: drawing.Font, text: string, textWidth: number, textHeight: number, canvas: drawing.Canvas,
-    bgRect: common2D.Rect, bgInsets: MarkerInsets, index: number) {
+     index: number) {
     let textWidths = font.measureText(text, drawing.TextEncoding.TEXT_ENCODING_UTF8);
     let lineLength = text.length;
     let lineCount = 1;
@@ -384,31 +348,15 @@ export class TextOptions {
       lineLength = divideAndRound(text.length * textWidth, textWidths, 3);
       lineCount = Math.ceil(text.length / lineLength);
     }
-
     let textAlign = this.style.getTextAlign();
-    let x = 0;
+    let x = this.position?.x;
     if (textAlign == TextAlign.CENTER) {
-      x = (bgRect.right + bgRect.left - textWidth) / 2
-      if (bgInsets) {
-        x = x + bgInsets.getLeft() / 2
-      }
+      x = x + textWidth / 2 - textWidths/2
     } else if (textAlign == TextAlign.RIGHT) {
-      x = bgRect.right - DefaultConstants.DEFAULT_MARGIN - textWidth
-      if (bgInsets) {
-        x = x - bgInsets.getRight()
-      }
-    } else {
-      // left
-      x = bgRect.left + DefaultConstants.DEFAULT_MARGIN
-      if (bgInsets) {
-        x = x + bgInsets.getLeft()
-      }
+      x = x + textWidth - textWidths
     }
     let start = 0;
-    let y = bgRect.top + DefaultConstants.DEFAULT_MARGIN * index + textHeight * index;
-    if (bgInsets) {
-      y = y + bgInsets.getTop()
-    }
+    let y = this.position?.y + textHeight * index;
     let skewX = 0;
     if (this.style.getItalic() || this.style.getSkewX()) {
       skewX = DefaultConstants.DEFAULT_ITALIC;
@@ -420,7 +368,6 @@ export class TextOptions {
     for (let index = 0; index < lineCount; index++) {
       const writeText = text.substring(start, start + lineLength);
       const textblob = drawing.TextBlob.makeFromString(writeText, font, drawing.TextEncoding.TEXT_ENCODING_UTF8);
-      y = y + textHeight * index;
       canvas.drawTextBlob(textblob, x, y);
       start = start + lineLength - 1;
       if (this.style.getUnderline()) {

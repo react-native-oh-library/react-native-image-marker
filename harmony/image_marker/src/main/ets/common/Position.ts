@@ -34,45 +34,45 @@ export class Position {
     textWidth: number,
     textHeight: number
   ): Position {
-    if (!position) {
-      return new Position(margin, margin);
+    if (position === null) {
+      return new Position(margin, 0);
     }
     switch (position) {
       case "topCenter":
         return new Position(
           (width - textWidth) / 2,
-          margin
+          0
         );
       case "topRight":
         return new Position(
-          width - textWidth,
-          margin
+          width - textWidth - margin,
+          0
         );
       case "center":
         return new Position(
           (width - textWidth) / 2,
-          (height - textHeight) / 2
+          (height - textHeight) / 2  - 2 * margin
         );
       case "bottomLeft":
         return new Position(
           margin,
-          height - textHeight - margin
+          height - textHeight - 2 * margin
         );
       case "bottomCenter":
         return new Position(
           (width - textWidth) / 2,
-          height - textHeight - margin
+          height - textHeight - 2 * margin
         );
       case "bottomRight":
         return new Position(
           width - textWidth - margin,
-          height - textHeight - margin
+          height - textHeight - 2 * margin
         );
       default:
       // topLeft
         return new Position(
           margin,
-          textHeight + margin
+          0
         );
     }
   }
