@@ -117,7 +117,6 @@ export class RNImageMarkerTurboModule extends TurboModule implements TM.RNNative
         canvas.save()
         let watermarkText = watermarkTexts[index]
         let textOptions = new TextOptions(watermarkText, this.imageWidth, this.imageHeight)
-        textOptions.getPosition()
         let positionEnum = watermarkText.positionOptions?.position
         if (!positionEnum) {
           positionEnum = watermarkText.position?.position

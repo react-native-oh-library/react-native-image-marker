@@ -60,7 +60,11 @@ export class ImageOptions {
     }
     let uri = srcObj.uri
     let url = uri
-    if (uri.indexOf("//") > 0) {
+    if(url.startsWith("file")){
+      let realUrl = uri.substring(uri.indexOf("//") + 2);
+      url =  realUrl;
+    }
+    if (url.indexOf("//") > 0) {
       let realUrl = uri.substring(uri.indexOf("//") + 2);
       url = "assets/" + realUrl;
     }

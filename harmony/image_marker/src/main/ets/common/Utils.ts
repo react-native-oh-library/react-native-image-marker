@@ -111,10 +111,11 @@ export function isCoilImg(uri: string | null): boolean {
     return false;
   }
   return uri.startsWith("http://") ||
-  uri.startsWith("https://") ||
+  uri.startsWith("https://")
+    ||
   uri.startsWith("file://") ||
     (uri.startsWith("data:") && uri.includes("base64") &&
-      (uri.includes("img") || uri.includes("image")));
+      (uri.includes("img") || uri.includes("image"))) || !uri.startsWith("asset:");
 }
 
 export async function downloadImage(src: string): Promise<object> {
@@ -122,30 +123,46 @@ export async function downloadImage(src: string): Promise<object> {
   let dir = globalThis.context.cacheDir
   let filePath =
     dir + "/" + util.generateRandomUUID(true).toString() + src.substring(src.lastIndexOf("/") + 1, src.length)
-  let resp = await http.createHttp().request(src, { readTimeout: 0,connectTimeout:0, usingCache: true })
-  if (resp.responseCode === http.ResponseCode.OK) {
-    let imageSource = await image.createImageSource(resp.result as ArrayBuffer);
-    let file = await fileIo.open(filePath, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE)
-    // 写入文件
-    Object
-    await fileIo.write(file.fd, resp.result as ArrayBuffer);
-    // 关闭文件
-    await fileIo.close(file.fd);
-    let imageInfo = await imageSource.getImageInfo(0);
-
+  if (src.startsWith("http://") ||
+  src.startsWith("https://")) {
+    let resp = await http.createHttp().request(src, { readTimeout: 0, connectTimeout: 0, usingCache: true })
+    if (resp.responseCode === http.ResponseCode.OK) {
+      let imageSource = await image.createImageSource(resp.result as ArrayBuffer);
+      let file = await fileIo.open(filePath, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE)
+      // 写入文件
+      Object
+      await fileIo.write(file.fd, resp.result as ArrayBuffer);
+      // 关闭文件
+      await fileIo.close(file.fd);
+      let imageInfo = await imageSource.getImageInfo(0);
+      return {
+        'uri': filePath,
+        'height': imageInfo.size.height,
+        'width': imageInfo.size.width,
+        'scale': 1
+      }
+    } else {
+      throw new MarkerError(ErrorCode.LOAD_IMAGE_FAILED, "image url is INVALID")
+    }
+  } else {
+    let imageSource = await image.createImageSource(src);
+    if(imageSource === undefined){
+      throw new MarkerError(ErrorCode.LOAD_IMAGE_FAILED, "image url is INVALID")
+    }
+    let imageInfo = imageSource.getImageInfoSync()
     return {
-      'uri': filePath,
+      'uri': src,
       'height': imageInfo.size.height,
       'width': imageInfo.size.width,
       'scale': 1
     }
-  } else {
-    throw new MarkerError(ErrorCode.LOAD_IMAGE_FAILED, "image url is INVALID")
   }
+
+
 }
 
 export async function getPixelMap(resourceManager, imageOptions: ImageOptions, isBackground: boolean) {
-  let imageSource:image.ImageSource
+  let imageSource: image.ImageSource
   let sourceOptions: image.SourceOptions =
     {
       sourceDensity: 120,
@@ -157,21 +174,21 @@ export async function getPixelMap(resourceManager, imageOptions: ImageOptions, i
   if (imageOptions.uri?.startsWith("assets")) {
     let resource = await getResource(imageOptions.src.uri, resourceManager);
     let arrayBuffer = resource.buffer.slice(resource.byteOffset, resource.byteLength + resource.byteOffset)
-    imageSource =await image.createImageSource(arrayBuffer, sourceOptions)
+    imageSource = await image.createImageSource(arrayBuffer, sourceOptions)
   } else {
-    imageSource =await image.createImageSource(imageOptions.src.uri)
+    imageSource = await image.createImageSource(imageOptions.src.uri)
   }
 
   let opts: image.InitializationOptions = {
     editable: true,
     size: {
-      height: imageOptions.src.height ,
+      height: imageOptions.src.height,
       width: imageOptions.src.width
     }
   }
   let pixelMap = await imageSource.createPixelMap(opts);
   pixelMap.opacitySync(imageOptions.alpha);
-  pixelMap.scaleSync(imageOptions.scale,imageOptions.scale)
+  pixelMap.scaleSync(imageOptions.scale, imageOptions.scale)
   return pixelMap;
 }
 
