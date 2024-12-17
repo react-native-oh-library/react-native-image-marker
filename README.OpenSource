@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "react-native-image-marker",
+        "License": "MIT",
+        "License File": "https://github.com/JimmyDaddy/react-native-image-marker/blob/master/LICENSE",
+        "Version Number": "1.2.6",
+        "Owner" : "xiafeng@huawei.com",
+        "Upstream URL": "https://github.com/JimmyDaddy/react-native-image-marker",
+        "Description": "react native image marker"
+    }
+]
