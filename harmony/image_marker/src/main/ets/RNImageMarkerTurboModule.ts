@@ -221,9 +221,7 @@ export class RNImageMarkerTurboModule extends TurboModule implements TM.RNNative
       fd = (await fs.open(uri, mode)).fd;
       await imagePacker.packToFile(backgroundPixelMap, fd, opts)
       imagePacker.release();
-      // change to real path
-      let real = fileUri.getUriFromPath(uri)
-      return real;
+      return uri;
     }
   }
 
