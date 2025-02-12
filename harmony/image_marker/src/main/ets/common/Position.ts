@@ -21,6 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+import { DefaultConstants } from "./DefaultConstants";
 
 export class Position {
   constructor(public x: number, public y: number) {
@@ -28,51 +29,51 @@ export class Position {
 
   static getTextPosition(
     position: string | null | undefined,
-    margin: number,
     width: number,
     height: number,
     textWidth: number,
     textHeight: number
   ): Position {
+    let margin = DefaultConstants.DEFAULT_MARGIN;
     if (position === null) {
-      return new Position(margin, 0);
+      return new Position(margin, margin);
     }
     switch (position) {
       case "topCenter":
         return new Position(
           (width - textWidth) / 2,
-          0
+          margin
         );
       case "topRight":
         return new Position(
           width - textWidth - margin,
-          0
+          margin
         );
       case "center":
         return new Position(
           (width - textWidth) / 2,
-          (height - textHeight) / 2  - 2 * margin
+          (height - textHeight) / 2
         );
       case "bottomLeft":
         return new Position(
           margin,
-          height - textHeight - 2 * margin
+          height - textHeight - margin
         );
       case "bottomCenter":
         return new Position(
           (width - textWidth) / 2,
-          height - textHeight - 2 * margin
+          height - textHeight - margin
         );
       case "bottomRight":
         return new Position(
           width - textWidth - margin,
-          height - textHeight - 2 * margin
+          height - textHeight - margin
         );
       default:
       // topLeft
         return new Position(
           margin,
-          0
+          margin
         );
     }
   }

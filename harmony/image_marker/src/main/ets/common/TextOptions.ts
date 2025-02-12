@@ -35,6 +35,7 @@ import { RNNativeImageMarker } from '@rnoh/react-native-openharmony/generated/tu
 import { MarkerInsets } from './MarkerInsets';
 import { TextAlign } from './TextAlign';
 import resourceManager from '@ohos.resourceManager';
+import { window } from '@kit.ArkUI';
 
 export class TextOptions {
   private text: string | null;
@@ -107,194 +108,146 @@ export class TextOptions {
     return this.maxHeight;
   }
 
-  constructor(options: RNNativeImageMarker.TextOptions, maxWidth: number, maxHeight: number) {
+  private lines: string[] = [];
+  private textHeight: number;
+  private fontHeight: number;
+  private textWidth: number;
+  private positionEnum: PositionEnum | null;
+  ;
+
+
+  constructor(options: RNNativeImageMarker.TextOptions) {
     this.text = options.text;
-    this.maxWidth = maxWidth
-    this.maxHeight = maxHeight
     if (!this.text) {
       throw new MarkerError(ErrorCode.PARAMS_REQUIRED, "mark text is required");
     }
     const positionOptions = options.position || null;
     this.x = positionOptions?.X ? handleDynamicToString(positionOptions?.X) : null;
     this.y = positionOptions?.Y ? handleDynamicToString(positionOptions.Y) : null;
-    this.style = new TextStyle(
-      options.style
-    )
-    let font = new drawing.Font();
-    font.setSize(this.style.getFontSize())
-    let metrics = font.getMetrics();
-    let textHeight = Math.abs(metrics.ascent)
-    let textWidth = 0
-    if (this.text.indexOf("\n") > 0) {
-      let texts = this.text.split("\n")
-      for (let index = 0; index < texts.length; index++) {
-        let width = font.measureText(texts[index], drawing.TextEncoding.TEXT_ENCODING_UTF8)
-        textWidth = textWidth > width ? textWidth : width
-      }
-    } else {
-      textWidth = font.measureText(this.text, drawing.TextEncoding.TEXT_ENCODING_UTF8)
-    }
-    if (positionOptions) {
-      this.position = positionOptions.position ?
-      Position.getTextPosition(PositionEnum.getPosition(positionOptions.position), DefaultConstants.DEFAULT_MARGIN,
-        this.maxWidth, this.maxHeight, textWidth, textHeight) : null;
-      if (!this.position) {
-        this.position = new Position(parseSpreadValue(this.x, this.maxWidth), parseSpreadValue(this.y, this.maxHeight))
-      }
-    } else {
-      this.position = Position.getTextPosition(PositionEnum.TOP_LEFT, DefaultConstants.DEFAULT_MARGIN,
-        this.maxWidth, this.maxHeight, textWidth, textHeight)
-    }
+    this.positionEnum = positionOptions?.position ? PositionEnum.getPosition(positionOptions?.position) : null;
+    this.style = new TextStyle(options.style)
   }
 
+  private wrapText(text: string, containerWidth: number, font: drawing.Font) {
+    const words = text.split('');
+    let line = '';
+    const lines = [];
+    for (let i = 0; i < words.length; i++) {
+      const testLine = line + words[i];
+      let testWidth = font.measureText(testLine, drawing.TextEncoding.TEXT_ENCODING_UTF8);
+      if (testWidth > containerWidth) {
+        lines.push(line);
+        line = words[i];
+      } else {
+        line = testLine;
+      }
+    }
+    lines.push(line);
+    return lines;
+  }
 
   applyStyle(
     canvas: drawing.Canvas,
-    margin: number,
-    positionEnum: string | null,
-    x: string | null,
-    y: string | null,
-    style: TextStyle,
     maxWidth: number,
     maxHeight: number,
     typeFace: drawing.Typeface | undefined
   ) {
-
+    this.maxWidth = maxWidth;
+    this.maxHeight = maxHeight;
     let font = new drawing.Font();
     if (typeFace) {
       font.setTypeface(typeFace)
     }
-    const textSize = style.getFontSize();
+    const textSize = this.style.getFontSize();
     font.setSize(textSize);
     let metrics = font.getMetrics();
-    let textHeight = Math.abs(metrics.top)
-    let length = 1
-    let textWidth = 0
-    if (this.text.indexOf("\n")) {
-      let texts = this.text.split("\n");
-      length = texts.length
-      for (let index = 0; index < texts.length; index++) {
-        const text = texts[index];
-        let textWidths = font.measureText(text, drawing.TextEncoding.TEXT_ENCODING_UTF8);
-        textWidth = textWidths > textWidth ? textWidths : textWidth
+    let textTop = Math.abs(metrics.top);
+    this.fontHeight = metrics.descent - metrics.ascent;
+    let maxTextWidth = maxWidth - 2 * DefaultConstants.DEFAULT_MARGIN;
+    let texts = this.text.split("\n");
+    for (let index = 0; index < texts.length; index++) {
+      const text = texts[index];
+      let width = font.measureText(text, drawing.TextEncoding.TEXT_ENCODING_UTF8);
+      if (width > maxTextWidth) {
+        this.textWidth = maxTextWidth;
+        this.lines = this.lines.concat(this.wrapText(text, maxTextWidth, font));
+      } else {
+        this.textWidth = this.textWidth > width ? this.textWidth : width;
+        this.lines.push(text);
       }
-    } else {
-      textWidth = font.measureText(this.text, drawing.TextEncoding.TEXT_ENCODING_UTF8);
     }
-    textWidth =
-      textWidth >= maxWidth - 2 * DefaultConstants.DEFAULT_MARGIN ? maxWidth - 2 * DefaultConstants.DEFAULT_MARGIN :
-        textWidth
-    let bgInsets: MarkerInsets
-    let bgRect: common2D.Rect = {
-      left: 0,
-      top: 0,
-      right: 0,
-      bottom: 0,
-    };
-
-    if (style.getTextBackgroundStyle()) {
-      ({ bgInsets, textWidth, bgRect } =
-        this.drawBackground(bgInsets, style, maxWidth, maxHeight, textWidth, bgRect, textHeight, length, margin,
-          positionEnum, x, y, canvas));
-    } else {
-      bgRect = this.defaultBackgroundReact(textWidth, textHeight, length, bgRect);
+    this.textHeight = this.fontHeight * this.lines.length;
+    this.position = new Position(DefaultConstants.DEFAULT_MARGIN, DefaultConstants.DEFAULT_MARGIN);
+    if (this.positionEnum) {
+      this.position =
+        Position.getTextPosition(this.positionEnum, this.maxWidth, this.maxHeight, this.textWidth, this.textHeight);
+    }else {
+      if (this.x !== null) {
+        this.position.x = parseSpreadValue(this.x, maxWidth);
+      }
+      if (this.y !== null) {
+        this.position.y = parseSpreadValue(this.y, maxHeight);
+      }
     }
-    length = this.drawTextWithStyle(style, canvas, length, font, textWidth, textHeight, bgRect);
+    if (this.style.getTextBackgroundStyle()) {
+        this.drawBackground(canvas);
+    }
+    this.drawTextWithStyle(canvas, font, textTop);
   }
 
-  private drawTextWithStyle(style: TextStyle, canvas: drawing.Canvas, length: number, font: drawing.Font,
-    textWidth: number,
-    textHeight: number, bgRect: common2D.Rect) {
+  private drawTextWithStyle(canvas: drawing.Canvas, font: drawing.Font, textTop: number) {
     let fontBrush = new drawing.Brush();
     let fontPen = new drawing.Pen();
-    if (style.getShadowLayerStyle()) {
-      const shadow = style.getShadowLayerStyle();
+    if (this.style.getShadowLayerStyle()) {
+      const shadow = this.style.getShadowLayerStyle();
       const shadowLayer = drawing.ShadowLayer.create(shadow?.radius, shadow?.dx, shadow?.dy, shadow?.color);
       fontBrush.setShadowLayer(shadowLayer);
       fontPen.setShadowLayer(shadowLayer);
     }
     let strokeWidth = 2;
-    if (style.getBold()) {
+    if (this.style.getBold()) {
       strokeWidth = 4;
     }
     canvas.save()
-    if (style.getRotate() != 0) {
-      canvas.rotate(style.getRotate(), (bgRect.left + bgRect.right) / 2, (bgRect.top + bgRect.bottom) / 2);
+    let bgRect: common2D.Rect = {
+      left: this.position?.x,
+      top: this.position?.y,
+      right: this.position?.x + this.textWidth,
+      bottom: this.position?.y + this.textHeight,
+    };
+    if (this.style.getRotate() != 0) {
+      canvas.rotate(this.style.getRotate(), (bgRect.left + bgRect.right) / 2, (bgRect.top + bgRect.bottom) / 2);
     }
     fontPen.setStrokeWidth(strokeWidth);
-    if (style.getColor()) {
-      let fontColor = convertHexToArgb(style.getColor());
+    if (this.style.getColor()) {
+      let fontColor = convertHexToArgb(this.style.getColor());
       fontBrush.setColor(fontColor);
       fontPen.setColor(fontColor);
     }
     canvas.attachPen(fontPen);
     canvas.attachBrush(fontBrush);
-    if (this.text.indexOf("\n")) {
-      let texts = this.text.split("\n");
-      length = texts.length;
-      for (let index = 0; index < texts.length; index++) {
-        const text = texts[index].trim();
-        this.drawText(font, text, textWidth, textHeight, canvas, index + 1);
-      }
-    } else {
-      this.drawText(font, this.text, textWidth, textHeight, canvas, 1);
+    for (let index = 0; index < this.lines.length; index++) {
+      this.drawText(font, this.lines[index], textTop, canvas, index);
     }
     canvas.detachPen();
     canvas.detachBrush();
-    canvas.restore()
-    return length;
+    canvas.restore();
   }
 
-  private defaultBackgroundReact(textWidth: number, textHeight: number, length: number,
-    bgRect: common2D.Rect) {
-    let left = this.position?.x
-    let top = this.position?.y
-    let right = this.position?.x + textWidth + 2 * DefaultConstants.DEFAULT_MARGIN
-    let dived = length > 1 ? (length - 1) * DefaultConstants.DEFAULT_MARGIN : 0
-    let bottom = this.position?.y + textHeight * length + 2 * DefaultConstants.DEFAULT_MARGIN + dived
-
-    bgRect = {
-      left: left,
-      top: top,
-      right: right,
-      bottom: bottom
-    };
-    return bgRect;
-  }
-
-  private drawBackground(bgInsets: MarkerInsets, style: TextStyle, maxWidth: number, maxHeight: number,
-    textWidth: number,
-    bgRect: common2D.Rect, textHeight: number, length: number, margin: number, positionEnum: string | null,
-    x: string | null, y: string | null, canvas: drawing.Canvas) {
-    bgInsets = style.getTextBackgroundStyle().toEdgeInsets(maxWidth, maxHeight);
-    let maxRemainingLength = maxWidth - 2 * DefaultConstants.DEFAULT_MARGIN - bgInsets.getLeft() - bgInsets.getRight();
-    textWidth = textWidth >= maxRemainingLength ? maxRemainingLength : textWidth;
-    bgRect =
-      this.calculateBackgroundTypeReact(style, bgRect, bgInsets, maxWidth, textHeight, length, textWidth, maxHeight);
+  private drawBackground(canvas: drawing.Canvas) {
+    let bgInsets = this.style.getTextBackgroundStyle().toEdgeInsets(this.maxWidth, this.maxHeight);
+    let bgRect = this.calculateBackgroundTypeReact(bgInsets);
     let backgroundBrush = new drawing.Brush();
-    if (style.getTextBackgroundStyle() && style.getTextBackgroundStyle()?.color) {
-      backgroundBrush.setColor(style.getTextBackgroundStyle()?.color);
-    }
-    let position = { x: margin, y: margin };
-    if (positionEnum !== null) {
-      position =
-        Position.getTextPosition(positionEnum, DefaultConstants.DEFAULT_MARGIN, maxWidth, maxHeight, textWidth,
-          textHeight);
-    } else {
-      if (x !== null) {
-        position.x = parseSpreadValue(x, maxWidth);
-      }
-      if (y !== null) {
-        position.y = parseSpreadValue(y, maxHeight);
-      }
+    if (this.style.getTextBackgroundStyle() && this.style.getTextBackgroundStyle()?.color) {
+      backgroundBrush.setColor(this.style.getTextBackgroundStyle()?.color);
     }
     canvas.save()
-    if (style.getRotate() != 0) {
-      canvas.rotate(style.getRotate(), (bgRect.left + bgRect.right) / 2, (bgRect.top + bgRect.bottom) / 2);
+    if (this.style.getRotate() != 0) {
+      canvas.rotate(this.style.getRotate(), (bgRect.left + bgRect.right) / 2, (bgRect.top + bgRect.bottom) / 2);
     }
 
-    if (style.getTextBackgroundStyle().cornerRadius) {
-      let paths: PathPotions[] = style.getTextBackgroundStyle().cornerRadius?.radii(bgRect);
+    if (this.style.getTextBackgroundStyle().cornerRadius) {
+      let paths: PathPotions[] = this.style.getTextBackgroundStyle().cornerRadius?.radii(bgRect);
       let path = this.getDrawPath(bgRect, paths);
       canvas.attachBrush(backgroundBrush);
       canvas.drawPath(path);
@@ -304,59 +257,47 @@ export class TextOptions {
       canvas.drawRect(bgRect);
       canvas.detachBrush();
     }
-    canvas.restore()
-    return { bgInsets, textWidth, bgRect };
+    canvas.restore();
   }
 
-  private calculateBackgroundTypeReact(style: TextStyle, bgRect: common2D.Rect, bgInsets: MarkerInsets,
-    maxWidth: number,
-    textHeight: number, length: number, textWidth: number, maxHeight: number) {
-    bgRect = {
+  private calculateBackgroundTypeReact(bgInsets: MarkerInsets) {
+    let bgRect: common2D.Rect  = {
       left: this.position?.x - bgInsets.getLeft(),
       top: this.position?.y - bgInsets.getTop(),
-      right: this.position?.x + textWidth + bgInsets.getRight() + DefaultConstants.DEFAULT_MARGIN,
-      bottom: this.position?.y + textHeight * length + bgInsets.getBottom() + 2 * DefaultConstants.DEFAULT_MARGIN
+      right: this.position?.x + this.textWidth + bgInsets.getRight(),
+      bottom: this.position?.y + this.textHeight + bgInsets.getBottom() + DefaultConstants.DEFAULT_BACKGROUP_BOTTOM_PADDING
     };
-    switch (style.getTextBackgroundStyle()?.type) {
+    switch (this.style.getTextBackgroundStyle()?.type) {
       case 'stretchX':
         bgRect = {
           left: 0,
-          top: this.position?.y - bgInsets.getTop() + DefaultConstants.DEFAULT_MARGIN,
-          right: maxWidth,
-          bottom: this.position?.y + textHeight * length + bgInsets.getBottom() + DefaultConstants.DEFAULT_MARGIN
+          top: this.position?.y - bgInsets.getTop(),
+          right: this.maxWidth,
+          bottom: this.position?.y + this.textHeight  + bgInsets.getBottom() + DefaultConstants.DEFAULT_BACKGROUP_BOTTOM_PADDING,
         }
         break;
       case 'stretchY':
         bgRect = {
           left: this.position?.x - bgInsets.getLeft(),
           top: 0,
-          right: this.position?.x + textWidth + bgInsets.getRight(),
-          bottom: maxHeight
+          right: this.position?.x + this.textWidth + bgInsets.getRight(),
+          bottom: this.maxHeight + DefaultConstants.DEFAULT_BACKGROUP_BOTTOM_PADDING,
         }
         break;
     }
     return bgRect;
   }
 
-  private drawText(font: drawing.Font, text: string, textWidth: number, textHeight: number, canvas: drawing.Canvas,
-     index: number) {
+  private drawText(font: drawing.Font, text: string, textTop: number, canvas: drawing.Canvas, index: number) {
     let textWidths = font.measureText(text, drawing.TextEncoding.TEXT_ENCODING_UTF8);
-    let lineLength = text.length;
-    let lineCount = 1;
-    if (textWidths > textWidth) {
-      textWidths = textWidth;
-      lineLength = divideAndRound(text.length * textWidth, textWidths, 3);
-      lineCount = Math.ceil(text.length / lineLength);
-    }
     let textAlign = this.style.getTextAlign();
     let x = this.position?.x;
     if (textAlign == TextAlign.CENTER) {
-      x = x + textWidth / 2 - textWidths/2
+      x = x + this.textWidth / 2 - textWidths / 2
     } else if (textAlign == TextAlign.RIGHT) {
-      x = x + textWidth - textWidths
+      x = x + this.textWidth - textWidths
     }
-    let start = 0;
-    let y = this.position?.y + textHeight * index;
+    let y = this.position?.y + this.fontHeight * index + textTop;
     let skewX = 0;
     if (this.style.getItalic() || this.style.getSkewX()) {
       skewX = DefaultConstants.DEFAULT_ITALIC;
@@ -365,33 +306,29 @@ export class TextOptions {
       }
       font.setSkewX(skewX)
     }
-    for (let index = 0; index < lineCount; index++) {
-      const writeText = text.substring(start, start + lineLength);
-      const textblob = drawing.TextBlob.makeFromString(writeText, font, drawing.TextEncoding.TEXT_ENCODING_UTF8);
-      canvas.drawTextBlob(textblob, x, y);
-      start = start + lineLength - 1;
-      if (this.style.getUnderline()) {
-        this.drawUnderline(x, y, textWidths, textHeight, canvas);
-      }
-      if (this.style.getStrikeThrough()) {
-        this.drawStrikeThrough(x, y, textWidths, textHeight, canvas)
-      }
+    const textblob = drawing.TextBlob.makeFromString(text, font, drawing.TextEncoding.TEXT_ENCODING_UTF8);
+    canvas.drawTextBlob(textblob, x, y);
+    if (this.style.getUnderline()) {
+      this.drawUnderline(x, y, textWidths, textTop, canvas);
+    }
+    if (this.style.getStrikeThrough()) {
+      this.drawStrikeThrough(x, y, textWidths, canvas);
     }
   }
 
-  private drawUnderline(x: number, y: number, textWidths: number, textHeight: number, canvas: drawing.Canvas) {
+  private drawUnderline(x: number, y: number, textWidths: number, textTop: number, canvas: drawing.Canvas) {
     let x0 = x;
-    let y0 = y + textHeight / 4;
+    let y0 = y - textTop + this.fontHeight + DefaultConstants.DEFAULT_UNDERLINE_DIATANCE;
     let x1 = x0 + textWidths;
-    let y1 = y + textHeight / 4;
+    let y1 = y - textTop + this.fontHeight + DefaultConstants.DEFAULT_UNDERLINE_DIATANCE;
     canvas.drawLine(x0, y0, x1, y1);
   }
 
-  private drawStrikeThrough(x: number, y: number, textWidths: number, textHeight: number, canvas: drawing.Canvas) {
+  private drawStrikeThrough(x: number, y: number, textWidths: number, canvas: drawing.Canvas) {
     let x0 = x
-    let y0 = y - textHeight / 4
+    let y0 = y - this.fontHeight / 4
     let x1 = x0 + textWidths
-    let y1 = y - textHeight / 4
+    let y1 = y - this.fontHeight / 4
     canvas.drawLine(x0, y0, x1, y1)
   }
 
@@ -429,24 +366,6 @@ export class TextOptions {
     }
     path.close()
     return path;
-  }
-
-  drawTextUnderLine(position: Position, canvas: drawing.Canvas, textWidth) {
-    let x0, y0, x1, y1 = 0;
-    y0 = position.y + DefaultConstants.DEFAULT_MARGIN
-    y1 = position.y + DefaultConstants.DEFAULT_MARGIN
-    x0 = position.x + DefaultConstants.DEFAULT_MARGIN
-    x1 = position.x + textWidth + DefaultConstants.DEFAULT_MARGIN
-    canvas.drawLine(x0, y0, x1, y1)
-  }
-
-  drawTextStrikeThroughLine(position: Position, canvas: drawing.Canvas, textWidth, height) {
-    let x0, y0, x1, y1 = 0;
-    x0 = position.x + DefaultConstants.DEFAULT_MARGIN
-    x1 = Math.abs(position.x) + textWidth + DefaultConstants.DEFAULT_MARGIN
-    y0 = position.y - height / 2 / 3
-    y1 = position.y - height / 2 / 3
-    canvas.drawLine(x0, y0, x1, y1)
   }
 }
 

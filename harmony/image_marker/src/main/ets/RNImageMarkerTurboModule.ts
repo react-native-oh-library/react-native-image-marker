@@ -116,11 +116,7 @@ export class RNImageMarkerTurboModule extends TurboModule implements TM.RNNative
       for (let index = 0; index < watermarkTexts.length; index++) {
         canvas.save()
         let watermarkText = watermarkTexts[index]
-        let textOptions = new TextOptions(watermarkText, this.imageWidth, this.imageHeight)
-        let positionEnum = watermarkText.positionOptions?.position
-        if (!positionEnum) {
-          positionEnum = watermarkText.position?.position
-        }
+        let textOptions = new TextOptions(watermarkText)
         // font name
         let typeFace: drawing.Typeface
         if (textOptions.getStyle() && textOptions.getStyle().getFontName() != null) {
@@ -130,8 +126,7 @@ export class RNImageMarkerTurboModule extends TurboModule implements TM.RNNative
             typeFace = drawing.Typeface.makeFromFile(fontName.familySrc.toString());
           }
         }
-        textOptions.applyStyle(canvas, DefaultConstants.DEFAULT_MARGIN, positionEnum, textOptions.getX(),
-          textOptions.getY(), textOptions.getStyle(), this.imageWidth, this.imageHeight, typeFace)
+        textOptions.applyStyle(canvas, this.imageWidth, this.imageHeight, typeFace)
         canvas.restore()
       }
       if (backgroundImage.rotate != 0) {
@@ -221,7 +216,9 @@ export class RNImageMarkerTurboModule extends TurboModule implements TM.RNNative
       fd = (await fs.open(uri, mode)).fd;
       await imagePacker.packToFile(backgroundPixelMap, fd, opts)
       imagePacker.release();
-      return uri;
+      // change to real path
+      let real = fileUri.getUriFromPath(uri)
+      return real;
     }
   }
 
