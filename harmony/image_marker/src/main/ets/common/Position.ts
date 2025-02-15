@@ -80,47 +80,37 @@ export class Position {
 
   static getImageRectFromPosition(
     position: string | null,
-    margin: number,
     maxWidth: number,
     maxHeight: number,
     imageWidth: number,
     imageHeight: number
   ): Position {
-    let left = margin;
-    let top = margin;
-    const pos = new Position(left, top);
+    let margin = DefaultConstants.DEFAULT_MARGIN;
+    const pos = new Position(margin, margin);
     if (position === null) {
       return pos;
     }
     switch (position) {
       case "topCenter":
-        left = maxWidth / 2 - imageWidth / 2;
-        pos.x = left;
+        pos.x = (maxWidth - imageWidth) / 2;
         break;
       case "topRight":
         pos.x = maxWidth - margin - imageWidth;
         break;
       case "center":
-        left = maxWidth / 2 - imageWidth / 2;
-        top = maxHeight / 2 - imageHeight / 2;
-        pos.x = left;
-        pos.y = top;
+        pos.x = maxWidth / 2 - imageWidth / 2;
+        pos.y = maxHeight / 2 - imageHeight / 2;
         break;
       case "bottomLeft":
-        top = maxHeight - imageHeight;
-        pos.y = top - margin;
+        pos.y = maxHeight - imageHeight - margin;
         break;
       case "bottomRight":
-        top = maxHeight - imageHeight;
-        left = maxWidth - imageWidth - margin;
-        pos.x = left;
-        pos.y = top - margin;
+        pos.x = maxWidth - imageWidth - margin;
+        pos.y = maxHeight - imageHeight - margin;
         break;
       case "bottomCenter":
-        top = maxHeight - imageHeight;
-        left = maxWidth / 2 - imageWidth / 2;
-        pos.x = left - margin;
-        pos.y = top - margin;
+        pos.x = (maxWidth - imageWidth) / 2;
+        pos.y = maxHeight - imageHeight - margin;
         break;
       default:
         break;

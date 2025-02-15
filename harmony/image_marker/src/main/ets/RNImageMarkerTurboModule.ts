@@ -68,7 +68,7 @@ export class RNImageMarkerTurboModule extends TurboModule implements TM.RNNative
     let fontUrl = "assets/assets/fonts"
     try {
       let fontsUrl = this.resourceManager.getRawFileListSync(fontUrl);
-      if(fontsUrl){
+      if (fontsUrl) {
         let fileDir = this.context.filesDir
         for (let index = 0; index < fontsUrl.length; index++) {
           const element = fontsUrl[index];
@@ -92,8 +92,8 @@ export class RNImageMarkerTurboModule extends TurboModule implements TM.RNNative
           }
         }
       }
-    }catch (e){
-      console.log("===========getRawFileListSync err ",e.message)
+    } catch (e) {
+      console.log("===========getRawFileListSync err ", e.message)
     }
 
   }
@@ -110,8 +110,14 @@ export class RNImageMarkerTurboModule extends TurboModule implements TM.RNNative
       let backgroundImage = new ImageOptions(options.backgroundImage)
       this.imageWidth = backgroundImage.src.width * backgroundImage.scale
       this.imageHeight = backgroundImage.src.height * backgroundImage.scale
-      let backgroundPixelMap: image.PixelMap = await getPixelMap(this.resourceManager, backgroundImage, true)
+      const arrayBuffer: ArrayBuffer = new ArrayBuffer(this.imageWidth * this.imageHeight * 4);
+      let opts: image.InitializationOptions = {
+        size: { height: this.imageHeight, width: this.imageWidth }
+      }
+
+      let backgroundPixelMap = await image.createPixelMap(arrayBuffer, opts);
       let canvas = new drawing.Canvas(backgroundPixelMap);
+      await getPixelMap(this.resourceManager, backgroundImage, true, canvas, 0, 0)
       let watermarkTexts = options.watermarkTexts;
       for (let index = 0; index < watermarkTexts.length; index++) {
         canvas.save()
@@ -171,9 +177,14 @@ export class RNImageMarkerTurboModule extends TurboModule implements TM.RNNative
         watermarkImageOptions.backgroundImage.src.width * watermarkImageOptions.backgroundImage.scale
       this.imageHeight =
         watermarkImageOptions.backgroundImage.src.height * watermarkImageOptions.backgroundImage.scale
-      let backgroundPixelMap: image.PixelMap =
-        await getPixelMap(this.resourceManager, watermarkImageOptions.backgroundImage, true)
-      const canvas = new drawing.Canvas(backgroundPixelMap)
+
+      const arrayBuffer: ArrayBuffer = new ArrayBuffer(this.imageWidth * this.imageHeight * 4);
+      let opts: image.InitializationOptions = {
+        size: { height: this.imageHeight, width: this.imageWidth }
+      }
+      let backgroundPixelMap = await image.createPixelMap(arrayBuffer, opts);
+      let canvas = new drawing.Canvas(backgroundPixelMap);
+      await getPixelMap(this.resourceManager, watermarkImageOptions.backgroundImage, true, canvas, 0, 0)
       canvas.save()
       await watermarkImageOptions.applyStyle(canvas, this.resourceManager, this.imageWidth,
         this.imageHeight,)

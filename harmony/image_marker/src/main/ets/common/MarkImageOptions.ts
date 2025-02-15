@@ -78,29 +78,24 @@ export class MarkImageOptions extends Options {
         const markImage = this.watermarkImages[index];
         let imageWidth = markImage.imageOption.src.width * markImage.imageOption.src.scale
         let imageHeight = markImage.imageOption.src.height * markImage.imageOption.src.scale
-        let markerPixelMap = await getPixelMap(resoureManger, markImage.imageOption, false)
         let position
         if (markImage.positionEnum != null) {
           position =
-            Position.getImageRectFromPosition(markImage.positionEnum, DefaultConstants.DEFAULT_MARGIN,
-              maxWidth, maxHeight, imageWidth,
-              imageHeight)
+            Position.getImageRectFromPosition(markImage.positionEnum, maxWidth, maxHeight, imageWidth, imageHeight)
         } else if (markImage.x && markImage.y) {
           let x = parseSpreadValue(markImage.x,maxWidth)
           let y = parseSpreadValue(markImage.y,maxHeight)
           position = { "x":x , "y":y }
         }else{
           position =
-            Position.getImageRectFromPosition(markImage.positionEnum, DefaultConstants.DEFAULT_MARGIN,
-              maxWidth, maxHeight, imageWidth,
-              imageHeight)
+            Position.getImageRectFromPosition(markImage.positionEnum, maxWidth, maxHeight, imageWidth, imageHeight)
         }
         if (markImage.imageOption.rotate != 0) {
-          let x = (position.x + (position.x + imageWidth)) / 2
-          let y = (position.y + (position.y + imageHeight)) / 2
+          let x = position.x + imageWidth / 2
+          let y = position.y + imageHeight / 2
           canvas.rotate(markImage.imageOption.rotate, x, y)
         }
-        canvas.drawImage(markerPixelMap, position.x, position.y)
+        await getPixelMap(resoureManger, markImage.imageOption, false, canvas, position.x, position.y)
         canvas.restore()
       }
     }
