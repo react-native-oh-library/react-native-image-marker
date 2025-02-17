@@ -29,6 +29,7 @@ import { util } from '@kit.ArkTS';
 import { http } from '@kit.NetworkKit'
 import { MarkerError } from './MarkerError';
 import { ErrorCode } from './ErrorCode';
+import { drawing } from '@kit.ArkGraphics2D';
 
 export interface position {
   x: number,
@@ -146,7 +147,7 @@ export async function downloadImage(src: string): Promise<object> {
     }
   } else {
     let imageSource = await image.createImageSource(src);
-    if(imageSource === undefined){
+    if (imageSource === undefined) {
       throw new MarkerError(ErrorCode.LOAD_IMAGE_FAILED, "image url is INVALID")
     }
     let imageInfo = imageSource.getImageInfoSync()
@@ -157,18 +158,19 @@ export async function downloadImage(src: string): Promise<object> {
       'scale': 1
     }
   }
-
-
 }
 
-export async function getPixelMap(resourceManager, imageOptions: ImageOptions, isBackground: boolean) {
+export async function getPixelMap(resourceManager, imageOptions: ImageOptions, isBackground: boolean,
+  canvas: drawing.Canvas, left: number, top: number) {
   let imageSource: image.ImageSource
+  const height = imageOptions.src.height;
+  const width = imageOptions.src.width;
   let sourceOptions: image.SourceOptions =
     {
       sourceDensity: 120,
       sourceSize: {
-        height: imageOptions.src.height,
-        width: imageOptions.src.width
+        height: height,
+        width: width
       }
     };
   if (imageOptions.uri?.startsWith("assets")) {
@@ -182,14 +184,24 @@ export async function getPixelMap(resourceManager, imageOptions: ImageOptions, i
   let opts: image.InitializationOptions = {
     editable: true,
     size: {
-      height: imageOptions.src.height,
-      width: imageOptions.src.width
+      height: height,
+      width: width
     }
   }
   let pixelMap = await imageSource.createPixelMap(opts);
-  pixelMap.opacitySync(imageOptions.alpha);
   pixelMap.scaleSync(imageOptions.scale, imageOptions.scale)
-  return pixelMap;
+  const brush = new drawing.Brush();
+  let matrix: Array<number> = [
+    1, 0, 0, 0, 0,
+    0, 1, 0, 0, 0,
+    0, 0, 1, 0, 0,
+    0, 0, 0, imageOptions.alpha, 0,
+  ];
+  let filter = drawing.ColorFilter.createMatrixColorFilter(matrix);
+  brush.setColorFilter(filter);
+  canvas.attachBrush(brush);
+  canvas.drawImage(pixelMap, left, top);
+  canvas.detachBrush();
 }
 
 export function findFontResource(resourceManager, fontName: string, path: string): string {
