@@ -39,6 +39,7 @@ import { window } from '@kit.ArkUI';
 
 export class TextOptions {
   private text: string | null;
+  private metrics?: drawing.FontMetrics;
 
   public setText(value: string | null) {
     this.text = value;
@@ -161,6 +162,7 @@ export class TextOptions {
     const textSize = this.style.getFontSize();
     font.setSize(textSize);
     let metrics = font.getMetrics();
+    this.metrics = metrics;
     let textTop = Math.abs(metrics.top);
     this.fontHeight = metrics.descent - metrics.ascent;
     let maxTextWidth = maxWidth - 2 * DefaultConstants.DEFAULT_MARGIN;
@@ -297,7 +299,7 @@ export class TextOptions {
     } else if (textAlign == TextAlign.RIGHT) {
       x = x + this.textWidth - textWidths
     }
-    let y = this.position?.y + this.fontHeight * index + textTop;
+    let y = this.position?.y + this.fontHeight * index + this.fontHeight - this.metrics.descent ?? 0;
     let skewX = 0;
     if (this.style.getItalic() || this.style.getSkewX()) {
       skewX = DefaultConstants.DEFAULT_ITALIC;
